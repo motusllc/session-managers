@@ -72,4 +72,18 @@ public interface RedisStoreManagement {
      * @return the Redis connection uri
      */
     String getUri();
+
+    /**
+     * Returns whether or not the pool uses Sentinel
+     *
+     * @return True if the pool uses sentinel, false otherwise
+     */
+    boolean isSentinel();
+
+    /**
+     * Returns the name of the sentinel master
+     *
+     * @return The sentinel master
+     */
+    String getSentinelMaster();
 }

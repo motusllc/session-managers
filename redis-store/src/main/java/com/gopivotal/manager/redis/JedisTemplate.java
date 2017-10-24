@@ -19,6 +19,7 @@ package com.gopivotal.manager.redis;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisConnectionException;
+import redis.clients.util.Pool;
 
 import java.util.logging.Logger;
 
@@ -26,11 +27,11 @@ import static java.util.logging.Level.WARNING;
 
 final class JedisTemplate {
 
-    private final JedisPool jedisPool;
+    private final Pool<Jedis> jedisPool;
 
     private final Logger logger = Logger.getLogger(this.getClass().getName());
 
-    JedisTemplate(JedisPool jedisPool) {
+    JedisTemplate(Pool<Jedis> jedisPool) {
         this.jedisPool = jedisPool;
     }
 

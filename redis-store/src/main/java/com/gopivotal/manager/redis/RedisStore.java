@@ -32,14 +32,18 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.jedis.Protocol;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 import redis.clients.jedis.exceptions.JedisConnectionException;
+import redis.clients.util.Pool;
 
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -68,7 +72,7 @@ public final class RedisStore extends AbstractLifecycle implements RedisStoreMan
 
     private volatile String host = "localhost";
 
-    private volatile JedisPool jedisPool;
+    private volatile Pool<Jedis> jedisPool;
 
     private volatile JedisTemplate jedisTemplate;
 
@@ -81,6 +85,10 @@ public final class RedisStore extends AbstractLifecycle implements RedisStoreMan
     private volatile SessionSerializationUtils sessionSerializationUtils;
 
     private volatile int timeout = Protocol.DEFAULT_TIMEOUT;
+
+    private volatile boolean sentinel = false;
+
+    private volatile String sentinelMaster = "mymaster";
 
     /**
      * Create a new instance
@@ -336,6 +344,71 @@ public final class RedisStore extends AbstractLifecycle implements RedisStoreMan
 
         });
     }
+
+    @Override
+    public boolean isSentinel() {
+        return this.lockTemplate.withReadLock(new LockTemplate.LockedOperation<Boolean>() {
+
+            @Override
+            public Boolean invoke() {
+                return RedisStore.this.sentinel;
+            }
+
+        });
+    }
+
+    /**
+     * Sets whether or not to use the sentinel protocol
+     *
+     * @param sentinel Whether or not to use sentinel
+     */
+    public void setSentinel(final boolean sentinel) {
+        this.lockTemplate.withWriteLock(new LockTemplate.LockedOperation<Void>() {
+
+            @Override
+            public Void invoke() {
+                RedisStore.this.logger.info("setting sentinel=" + sentinel);
+                boolean previous = RedisStore.this.sentinel;
+                RedisStore.this.sentinel = sentinel;
+                RedisStore.this.propertyChangeSupport.notify("sentinel", previous, RedisStore.this.sentinel);
+                return null;
+            }
+
+        });
+    }
+
+    @Override
+    public String getSentinelMaster() {
+        return this.lockTemplate.withReadLock(new LockTemplate.LockedOperation<String>() {
+
+            @Override
+            public String invoke() {
+                return RedisStore.this.sentinelMaster;
+            }
+
+        });
+    }
+
+    /**
+     * The name of the master to follow in Sentinel
+     *
+     * @param sentinelMaster The Sentinel master name
+     */
+    public void setSentinelMaster(final String sentinelMaster) {
+        this.lockTemplate.withWriteLock(new LockTemplate.LockedOperation<Void>() {
+
+            @Override
+            public Void invoke() {
+                RedisStore.this.logger.info("setting sentinelMaster=" + sentinelMaster);
+                String previous = RedisStore.this.sentinelMaster;
+                RedisStore.this.sentinelMaster = sentinelMaster;
+                RedisStore.this.propertyChangeSupport.notify("sentinelMaster", previous, RedisStore.this.sentinelMaster);
+                return null;
+            }
+
+        });
+    }
+
 
     @Override
     public int getSize() {
@@ -609,8 +682,15 @@ public final class RedisStore extends AbstractLifecycle implements RedisStoreMan
                     JedisPoolConfig poolConfig = new JedisPoolConfig();
                     poolConfig.setMaxTotal(RedisStore.this.connectionPoolSize);
 
-                    RedisStore.this.jedisPool = new JedisPool(poolConfig, RedisStore.this.host, RedisStore.this.port,
-                            RedisStore.this.timeout, RedisStore.this.password, RedisStore.this.database);
+                    if (RedisStore.this.sentinel) {
+                        Set<String> sentinelHosts = new HashSet<String>(Arrays.asList(RedisStore.this.host.split(";")));
+                        RedisStore.this.jedisPool = new JedisSentinelPool(RedisStore.this.sentinelMaster, sentinelHosts, poolConfig,
+                                RedisStore.this.timeout, RedisStore.this.password, RedisStore.this.database);
+
+                    } else {
+                        RedisStore.this.jedisPool = new JedisPool(poolConfig, RedisStore.this.host, RedisStore.this.port,
+                                RedisStore.this.timeout, RedisStore.this.password, RedisStore.this.database);
+                    }
                 }
 
 

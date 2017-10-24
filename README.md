@@ -27,12 +27,13 @@ The Store has a number of configuration elements that dictate how the Redis conn
 | --- | ------- | -----------
 | `connectionPoolSize` | `-1` | The maximum number of concurrent connections
 | `database` | `0` | The database to connect to
-| `host` | `localhost` | The host to connect to
+| `host` | `localhost` | The host to connect to, or in sentinel mode, the semicolon-separated list of sentinels
 | `password` | `<none>` | The password to use to `AUTH`
 | `port` | `6379` | The port to connect to
 | `timeout` | `2000` | The connection timeout in milliseconds
 | `uri` | `<none>` | A URI-style representation of the connection details, e.g. `redis://username:password@localhost:6370/0`
-
+| `sentinel` | `false` | Set to true if operating in sentinel mode
+| `sentinelMaster` | `mymaster` | The name of the [Redis Sentinel][s] master
 
 ## Contributing
 [Pull requests][p] are welcome; see the [contributor guidelines][c] for details.
@@ -45,3 +46,4 @@ This project is released under version 2.0 of the [Apache License][a].
 [m]: http://tomcat.apache.org/tomcat-7.0-doc/config/manager.html
 [p]: http://help.github.com/send-pull-requests
 [r]: http://redis.io
+[s]: https://redis.io/topics/sentinel
